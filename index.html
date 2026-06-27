@@ -2,380 +2,1132 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NeuroVerse  | Next-Gen Neural Network Explorer</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/MotionPathPlugin.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.1/three.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="theme-color" content="#0c0c0c">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>NEUROVERSE — Spatial Workbench</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <style>
-        @keyframes neural-pulse {
-            0% { box-shadow: 0 0 0 0 rgba(66, 153, 225, 0.7); }
-            70% { box-shadow: 0 0 0 20px rgba(66, 153, 225, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(66, 153, 225, 0); }
+        :root {
+            --bg: #0c0c0c;
+            --surface: #141414;
+            --ink: #1a1a1a;
+            --border: #2a2a2a;
+            --text: #f0eee9;
+            --muted: #8a8884;
+            --accent: #ff4d00;
+            --ease: cubic-bezier(0.16, 1, 0.3, 1);
+            --safe-top: env(safe-area-inset-top, 0px);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+            --safe-left: env(safe-area-inset-left, 0px);
+            --safe-right: env(safe-area-inset-right, 0px);
         }
 
-        .neural-glow {
-            animation: neural-pulse 2s infinite;
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        html { 
+            background: var(--bg); 
+            scrollbar-width: thin; 
+            scrollbar-color: var(--border) var(--bg);
+            overflow-x: hidden;
+            touch-action: manipulation;
+            scroll-behavior: smooth;
+        }
+        ::-webkit-scrollbar { width: 3px; }
+        ::-webkit-scrollbar-track { background: var(--bg); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+            overscroll-behavior-y: none;
         }
 
-        .parallax-bg {
-            transform-style: preserve-3d;
-            transform: perspective(1000px);
+        ::selection { background: var(--accent); color: var(--bg); }
+
+        /* ===== CURSOR — Desktop Only ===== */
+        @media (pointer: fine) {
+            .cursor {
+                position: fixed; top: 0; left: 0;
+                width: 20px; height: 20px;
+                border: 1px solid var(--text);
+                pointer-events: none; z-index: 99999;
+                transform: translate(-50%, -50%);
+                transition: width 0.3s var(--ease), height 0.3s var(--ease), background 0.2s, border-color 0.2s;
+                mix-blend-mode: difference;
+                border-radius: 50%;
+            }
+            .cursor.hover {
+                width: 50px; height: 50px;
+                background: rgba(255, 77, 0, 0.1);
+                border-color: var(--accent);
+            }
+            .cursor-dot {
+                position: fixed; top: 0; left: 0;
+                width: 4px; height: 4px;
+                background: var(--accent);
+                pointer-events: none; z-index: 99999;
+                transform: translate(-50%, -50%);
+                border-radius: 50%;
+            }
+            body { cursor: none; }
+            a, button, .btn, .feature, .metric, input { cursor: none; }
+        }
+        @media (pointer: coarse) { 
+            .cursor, .cursor-dot { display: none !important; } 
         }
 
-        .floating {
-            animation: float 6s ease-in-out infinite;
-        }
-
-        @keyframes float {
-            0% { transform: translateY(0px) rotate(0deg); }
-            50% { transform: translateY(-20px) rotate(5deg); }
-            100% { transform: translateY(0px) rotate(0deg); }
-        }
-
-        .glassmorphism {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-        }
-
-        .neuron-connection {
-            stroke-dasharray: 1000;
-            stroke-dashoffset: 1000;
-            animation: drawLine 2s ease forwards;
-        }
-
-        @keyframes drawLine {
-            to { stroke-dashoffset: 0; }
-        }
-
-        .cyber-button {
+        /* ===== HERO SECTION — CONTAINED CANVAS ===== */
+        .hero-section {
             position: relative;
+            width: 100%;
+            min-height: 100dvh;
             overflow: hidden;
-            transition: all 0.3s ease;
-            border: 2px solid transparent;
-            background: linear-gradient(90deg, #00f2fe, #4facfe);
-            background-size: 400% 400%;
-            animation: gradient 3s ease infinite;
+            background: var(--bg);
+            display: flex;
+            flex-direction: column;
         }
 
-        @keyframes gradient {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
+        #hero-canvas {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+            touch-action: none;
         }
 
-        .cyber-button::before {
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+            padding: 100px 20px 60px;
+            pointer-events: none;
+        }
+        .hero-content > * { pointer-events: auto; }
+
+        .hero-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: clamp(2.8rem, 12vw, 10rem);
+            line-height: 0.9;
+            letter-spacing: -0.04em;
+            font-weight: 700;
+            text-transform: uppercase;
+            position: relative;
+        }
+        .hero-title .line-accent {
+            color: var(--accent);
+            text-shadow: 0 0 40px rgba(255, 77, 0, 0.15);
+            animation: accentPulse 4s ease-in-out infinite;
+        }
+        @keyframes accentPulse {
+            0%, 100% { text-shadow: 0 0 40px rgba(255, 77, 0, 0.15); }
+            50% { text-shadow: 0 0 80px rgba(255, 77, 0, 0.3), 0 0 120px rgba(255, 77, 0, 0.1); }
+        }
+
+        .hero-sub {
+            font-size: clamp(0.95rem, 3vw, 1.1rem);
+            color: var(--muted);
+            max-width: 420px;
+            line-height: 1.6;
+            margin: 24px 0 32px;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeUp 1s var(--ease) 0.6s forwards;
+        }
+        @keyframes fadeUp {
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+            padding: 14px 28px;
+            font-size: 0.85rem; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 0.02em;
+            border: none; 
+            cursor: pointer;
+            transition: all 0.3s var(--ease);
+            position: relative; overflow: hidden;
+            min-height: 48px;
+            border-radius: 0;
+            -webkit-touch-callout: none;
+            user-select: none;
+        }
+        .btn:active { transform: scale(0.96); }
+        .btn-primary {
+            background: var(--text); color: var(--bg);
+        }
+        .btn-primary:hover {
+            background: var(--accent); color: var(--bg);
+            transform: translateY(-2px);
+            box-shadow: 0 20px 40px -10px rgba(255, 77, 0, 0.3);
+        }
+        .btn-outline {
+            background: transparent; color: var(--text);
+            border: 1px solid var(--border);
+        }
+        .btn-outline:hover {
+            background: var(--text); color: var(--bg);
+            border-color: var(--text);
+        }
+
+        .hero-badge {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 6px 12px; border: 1px solid var(--border);
+            margin-bottom: 24px; font-size: 0.7rem;
+            text-transform: uppercase; letter-spacing: 0.1em;
+            color: var(--muted);
+            opacity: 0;
+            animation: fadeUp 0.8s var(--ease) 0.2s forwards;
+            width: fit-content;
+        }
+        .hero-badge .pulse-dot {
+            width: 6px; height: 6px; background: var(--accent); border-radius: 50%;
+            animation: dotPulse 2s ease-in-out infinite;
+            flex-shrink: 0;
+        }
+        @keyframes dotPulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.5); opacity: 0.6; }
+        }
+
+        .title-line {
+            overflow: hidden;
+            display: block;
+        }
+        .title-line span {
+            display: block;
+            transform: translateY(110%);
+            animation: lineReveal 1.2s var(--ease) forwards;
+        }
+        .title-line:nth-child(1) span { animation-delay: 0.3s; }
+        .title-line:nth-child(2) span { animation-delay: 0.45s; }
+        @keyframes lineReveal {
+            to { transform: translateY(0); }
+        }
+
+        .hero-actions {
+            display: flex; gap: 12px; flex-wrap: wrap;
+            opacity: 0; 
+            animation: fadeUp 1s var(--ease) 0.8s forwards;
+        }
+
+        /* Scroll indicator */
+        .scroll-indicator {
+            position: absolute;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            opacity: 0;
+            animation: fadeUp 1s var(--ease) 1.2s forwards;
+            pointer-events: auto;
+        }
+        .scroll-indicator span {
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--muted);
+        }
+        .scroll-indicator .scroll-line {
+            width: 1px;
+            height: 40px;
+            background: linear-gradient(to bottom, var(--muted), transparent);
+            animation: scrollBounce 2s ease-in-out infinite;
+        }
+        @keyframes scrollBounce {
+            0%, 100% { transform: translateY(0); opacity: 0.5; }
+            50% { transform: translateY(8px); opacity: 1; }
+        }
+
+        /* ===== NAV ===== */
+        nav {
+            position: fixed; top: 0; width: 100%; z-index: 100;
+            border-bottom: 1px solid transparent;
+            transition: all 0.4s var(--ease);
+            padding-top: var(--safe-top);
+        }
+        nav.scrolled {
+            background: rgba(12, 12, 12, 0.92);
+            backdrop-filter: blur(20px) saturate(1.2);
+            -webkit-backdrop-filter: blur(20px) saturate(1.2);
+            border-color: var(--border);
+        }
+        .nav-inner {
+            max-width: 1400px; margin: 0 auto;
+            padding: 0 20px; height: 56px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .logo {
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700; font-size: 1.1rem;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .logo-mark {
+            width: 28px; height: 28px;
+            background: var(--text); display: flex;
+            align-items: center; justify-content: center;
+            transition: transform 0.3s var(--ease);
+            flex-shrink: 0;
+        }
+        .logo:hover .logo-mark { transform: rotate(45deg) scale(1.1); }
+        .logo-mark svg { width: 16px; height: 16px; color: var(--bg); }
+
+        .nav-links { display: none; gap: 32px; }
+        .nav-links a {
+            font-size: 0.8rem; font-weight: 500;
+            color: var(--muted); text-decoration: none;
+            text-transform: uppercase; letter-spacing: 0.05em;
+            transition: color 0.2s;
+            position: relative;
+            padding: 8px 0;
+        }
+        .nav-links a::after {
+            content: ''; position: absolute; bottom: -4px; left: 0;
+            width: 0; height: 1px; background: var(--accent);
+            transition: width 0.3s var(--ease);
+        }
+        .nav-links a:hover { color: var(--text); }
+        .nav-links a:hover::after { width: 100%; }
+
+        /* Mobile Menu */
+        .menu-btn {
+            display: flex; flex-direction: column; gap: 5px;
+            padding: 8px; background: none; border: none;
+            z-index: 101; position: relative;
+        }
+        .menu-btn span {
+            display: block; width: 24px; height: 1.5px;
+            background: var(--text); transition: all 0.3s var(--ease);
+            transform-origin: center;
+        }
+        .menu-btn.active span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
+        .menu-btn.active span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+        .menu-btn.active span:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); }
+
+        .mobile-nav {
+            position: fixed; inset: 0; z-index: 99;
+            background: rgba(12, 12, 12, 0.98);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            gap: 32px;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.4s var(--ease);
+            padding: var(--safe-top) 0 var(--safe-bottom);
+        }
+        .mobile-nav.open { opacity: 1; pointer-events: auto; }
+        .mobile-nav a {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 2rem; font-weight: 700;
+            color: var(--text); text-decoration: none;
+            text-transform: uppercase; letter-spacing: 0.05em;
+            opacity: 0; transform: translateY(20px);
+            transition: all 0.4s var(--ease);
+        }
+        .mobile-nav.open a {
+            opacity: 1; transform: translateY(0);
+        }
+        .mobile-nav.open a:nth-child(1) { transition-delay: 0.1s; }
+        .mobile-nav.open a:nth-child(2) { transition-delay: 0.2s; }
+        .mobile-nav.open a:nth-child(3) { transition-delay: 0.3s; }
+        .mobile-nav a:hover { color: var(--accent); }
+
+        /* ===== SECTIONS ===== */
+        section {
+            position: relative;
+            z-index: 2;
+            background: var(--bg);
+            border-top: 1px solid var(--border);
+        }
+        .section-inner {
+            max-width: 1400px; margin: 0 auto;
+            padding: 80px 20px;
+        }
+
+        .section-label {
+            font-size: 0.75rem; font-weight: 600;
+            color: var(--accent); text-transform: uppercase;
+            letter-spacing: 0.15em; margin-bottom: 20px;
+            opacity: 0;
+            transform: translateX(-20px);
+            transition: all 0.8s var(--ease);
+        }
+        .section-label.visible {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        h2 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: clamp(2rem, 6vw, 4.5rem);
+            line-height: 0.95; font-weight: 700;
+            text-transform: uppercase; margin-bottom: 24px;
+        }
+
+        /* ===== ARCHITECTURE ===== */
+        .arch-grid {
+            display: grid; grid-template-columns: 1fr;
+            gap: 0; border: 1px solid var(--border);
+            opacity: 0;
+            transform: translateY(40px);
+            transition: all 1s var(--ease);
+        }
+        .arch-grid.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .arch-left {
+            padding: 28px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .arch-right { padding: 20px; }
+
+        .arch-feature {
+            display: flex;
+            gap: 14px;
+            align-items: flex-start;
+            margin-bottom: 20px;
+            opacity: 0;
+            transform: translateX(-20px);
+            transition: all 0.8s var(--ease);
+        }
+        .arch-feature.visible {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        .arch-feature:hover .arch-icon {
+            border-color: var(--accent);
+            background: rgba(255, 77, 0, 0.05);
+        }
+        .arch-icon {
+            width: 44px;
+            height: 44px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: all 0.4s var(--ease);
+        }
+        .arch-icon svg { width: 18px; height: 18px; }
+
+        .code-block {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            line-height: 1.7;
+            overflow: hidden;
+            position: relative;
+        }
+        .code-block::after {
             content: '';
             position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(
-                120deg,
-                transparent,
-                rgba(255, 255, 255, 0.4),
-                transparent
-            );
-            transition: all 0.6s;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent);
+            opacity: 0.3;
+            animation: scanline 3s linear infinite;
         }
-
-        .cyber-button:hover::before {
-            left: 100%;
+        @keyframes scanline {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
         }
-
-        .neural-grid {
-            background-image: 
-                radial-gradient(circle, rgba(52, 211, 153, 0.1) 1px, transparent 1px),
-                radial-gradient(circle, rgba(52, 211, 153, 0.1) 1px, transparent 1px);
-            background-size: 50px 50px;
-            background-position: 0 0, 25px 25px;
-            animation: gridMove 20s linear infinite;
-        }
-
-        @keyframes gridMove {
-            0% { background-position: 0 0, 25px 25px; }
-            100% { background-position: 50px 50px, 75px 75px; }
-        }
-
-        .hero-text {
-            text-shadow: 0 0 10px rgba(0, 255, 255, 0.8),
-                         0 0 20px rgba(0, 255, 255, 0.8),
-                         0 0 30px rgba(0, 255, 255, 0.8);
-        }
-
-        .neural-particle {
-            position: absolute;
-            width: 4px;
-            height: 4px;
-            background: #00f2fe;
-            border-radius: 50%;
-            filter: blur(1px);
-        }
-
-        @media (max-width: 768px) {
-            .neural-grid {
-                background-size: 25px 25px;
-                background-position: 0 0, 12.5px 12.5px;
-            }
-        }
-
-        .code-window {
-            background: #1a1a1a;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
         .code-header {
-            background: #333;
-            padding: 8px 16px;
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--border);
             display: flex;
-            justify-content: space-between;
+            gap: 6px;
             align-items: center;
         }
-
-        .code-dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            margin-right: 6px;
-        }
-
-        .code-red { background: #ff5f56; }
-        .code-yellow { background: #ffbd2e; }
-        .code-green { background: #27c93f; }
-
-        .code-content {
+        .code-header span { width: 8px; height: 8px; display: block; border-radius: 50%; }
+        .code-body {
             padding: 16px;
-            font-family: 'Fira Code', monospace;
-            color: #00f2fe;
+            color: var(--muted);
+            min-height: 200px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
         }
+        .tk-k { color: var(--accent); }
+        .tk-s { color: #666; }
+        .tk-n { color: #ff9500; }
+        .tk-c { color: #555; font-style: italic; }
 
-        .typing-effect::after {
-            content: '|';
-            animation: blink 1s infinite;
-        }
-
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0; }
-        }
-
-        .network-node {
-            transition: all 0.3s ease;
-        }
-
-        .network-node:hover {
-            filter: brightness(1.5);
-            transform: scale(1.2);
-        }
-
-        .custom-shape {
-            clip-path: polygon(20% 0%, 80% 0%, 100% 20%, 100% 80%, 80% 100%, 20% 100%, 0% 80%, 0% 20%);
-        }
-        .gif-container {
-            width: 400px;
-            height: 250px;
-            border-radius: 20px; /* Slightly rounded edges */
-            overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background-color: rgba(255, 255, 255, 0.1); /* Semi-transparent background for better contrast */
-            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3), 0 0 40px rgba(0, 255, 255, 0.2), 0 0 60px rgba(0, 255, 255, 0.1);
-            animation: pulse 2s infinite;
-        }
-      
-        /* Rectangular and responsive GIF styling */
-        .gif-inside {
+        #mini-net {
             width: 100%;
+            height: 160px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            margin-top: 16px;
+            overflow: visible;
+        }
+
+        /* ===== TRAINING ===== */
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0;
+            border: 1px solid var(--border);
+            margin-bottom: 20px;
+        }
+        .metric {
+            padding: 20px 16px;
+            border-right: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            transition: background 0.3s;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.6s var(--ease);
+        }
+        .metric.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .metric:active { background: var(--surface); }
+        .metric:nth-child(2n) { border-right: none; }
+        .metric:nth-last-child(-n+2) { border-bottom: none; }
+        .metric-label {
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--muted);
+            margin-bottom: 8px;
+        }
+        .metric-value {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        .metric-bar {
+            height: 2px;
+            background: var(--ink);
+            margin-top: 10px;
+            overflow: hidden;
+        }
+        .metric-bar-fill {
             height: 100%;
-            object-fit: cover;
-            border-radius: 20px; /* Ensures the GIF also follows the rounded rectangle shape */
+            background: var(--accent);
+            width: 0%;
+            transition: width 0.5s var(--ease);
         }
-      
-        /* Pulse effect for the edge lighting */
-        @keyframes pulse {
-            0% {
-                box-shadow: 0 0 20px rgba(0, 255, 255, 0.3), 0 0 40px rgba(0, 255, 255, 0.2), 0 0 60px rgba(0, 255, 255, 0.1);
-            }
-            50% {
-                box-shadow: 0 0 30px rgba(0, 255, 255, 0.5), 0 0 50px rgba(0, 255, 255, 0.3), 0 0 70px rgba(0, 255, 255, 0.2);
-            }
-            100% {
-                box-shadow: 0 0 20px rgba(0, 255, 255, 0.3), 0 0 40px rgba(0, 255, 255, 0.2), 0 0 60px rgba(0, 255, 255, 0.1);
-            }
+
+        .charts {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 0;
+            border: 1px solid var(--border);
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.8s var(--ease);
         }
-      
-        /* Other CSS styles for the section */
-        .hero-text {
-            z-index: 1;
+        .charts.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .chart-box {
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+        .chart-box:last-child { border-bottom: none; }
+        .chart-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--muted);
+            margin-bottom: 12px;
+        }
+        .chart-canvas { height: 200px; position: relative; }
+
+        /* ===== FEATURES ===== */
+        .features-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 0;
+            border: 1px solid var(--border);
+        }
+        .feature {
+            padding: 32px 24px;
+            border-bottom: 1px solid var(--border);
+            transition: all 0.4s var(--ease);
+            position: relative;
+            overflow: hidden;
+        }
+        .feature:last-child { border-bottom: none; }
+        .feature::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--accent);
+            transition: width 0.6s var(--ease);
+        }
+        .feature:active::before { width: 100%; }
+        .feature:active {
+            background: var(--surface);
+        }
+        .feature-num {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 0.75rem;
+            color: var(--accent);
+            margin-bottom: 16px;
+        }
+        .feature h3 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.15rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        .feature p {
+            font-size: 0.9rem;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        /* ===== PLAYGROUND ===== */
+        .playground-wrap {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 0;
+            border: 1px solid var(--border);
+            min-height: auto;
+        }
+        .playground-code {
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+        }
+        .playground-code .code-block {
+            flex: 1;
+            border: none;
+            border-bottom: 1px solid var(--border);
+        }
+        .playground-code .code-body {
+            min-height: 160px;
+            max-height: 240px;
+            overflow-y: auto;
+        }
+        .playground-viz {
+            display: flex;
+            flex-direction: column;
             position: relative;
         }
-      
-        .neural-glow {
-            background: linear-gradient(90deg, rgba(0, 255, 255, 0.2), rgba(255, 0, 255, 0.2));
-            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5), 0 0 40px rgba(255, 0, 255, 0.5);
+        .viz-canvas-wrap {
+            flex: 1;
+            position: relative;
+            min-height: 280px;
+            background: var(--bg);
+            touch-action: none;
         }
-      
-        .cyber-button:hover {
-            transform: scale(1.1);
+        #playground-canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
         }
-      
-        .custom-shape {
-            clip-path: polygon(0 0, 100% 0, 90% 100%, 10% 100%);
+        .viz-overlay {
+            position: absolute; inset: 0;
+            display: flex;
+            align-items: center; justify-content: center;
+            background: rgba(12, 12, 12, 0.7);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            transition: opacity 0.4s ease;
+            z-index: 5;
         }
-      
-        .mouse-scroll svg {
-            animation: bounce 1.5s infinite;
+        .viz-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .playground-controls {
+            padding: 12px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 10px;
+            background: var(--bg);
+        }
+        .playground-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0;
+            border-top: 1px solid var(--border);
+        }
+        .play-stat {
+            padding: 14px 8px;
+            text-align: center;
+            border-right: 1px solid var(--border);
+        }
+        .play-stat:last-child { border-right: none; }
+        .play-stat-label {
+            font-size: 0.55rem;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--muted);
+            margin-bottom: 6px;
+        }
+        .play-stat-value {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        /* ===== FOOTER ===== */
+        footer {
+            position: relative;
+            z-index: 2;
+            background: var(--bg);
+            border-top: 1px solid var(--border);
+            padding-bottom: var(--safe-bottom);
+        }
+        .footer-inner {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 60px 20px 32px;
+        }
+        .footer-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 32px 20px;
+            margin-bottom: 40px;
+        }
+        .footer-brand { grid-column: 1 / -1; }
+        .footer-brand p {
+            color: var(--muted);
+            line-height: 1.7;
+            max-width: 320px;
+            margin: 12px 0 20px;
+            font-size: 0.9rem;
+        }
+        .footer-input {
+            display: flex;
+            gap: 0;
+            max-width: 100%;
+        }
+        .footer-input input {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 12px 14px;
+            color: var(--text);
+            font-size: 0.85rem;
+            outline: none;
+            width: 100%;
+            min-height: 44px;
+            border-radius: 0;
+        }
+        .footer-input input:focus { border-color: var(--accent); }
+        .footer-input button {
+            background: var(--text);
+            color: var(--bg);
+            border: none;
+            padding: 12px 18px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: background 0.3s;
+            min-height: 44px;
+            white-space: nowrap;
+        }
+        .footer-input button:hover { background: var(--accent); }
+        .footer-input button:active { transform: scale(0.96); }
+
+        .footer-col h4 {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--text);
+            margin-bottom: 16px;
+        }
+        .footer-col a {
+            display: block;
+            color: var(--muted);
+            text-decoration: none;
+            font-size: 0.85rem;
+            margin-bottom: 10px;
+            transition: color 0.2s;
+            padding: 4px 0;
+            min-height: 28px;
+        }
+        .footer-col a:hover { color: var(--accent); }
+
+        .footer-bottom {
+            border-top: 1px solid var(--border);
+            padding-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .footer-bottom p {
+            font-size: 0.75rem;
+            color: var(--muted);
+            text-align: center;
+        }
+        .footer-social {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+        }
+        .footer-social a {
+            color: var(--muted);
+            transition: color 0.2s, transform 0.2s;
+            padding: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .footer-social a:hover {
+            color: var(--text);
+            transform: translateY(-2px);
+        }
+        .footer-social a:active { transform: scale(0.9); }
+
+        /* ===== REVEALS ===== */
+        .reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.8s var(--ease), transform 0.8s var(--ease);
+        }
+        .reveal.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* ===== TABLET ===== */
+        @media (min-width: 640px) {
+            .hero-content { padding: 120px 32px 80px; }
+            .section-inner { padding: 100px 32px; }
+            .nav-inner { padding: 0 32px; height: 64px; }
+            .features-grid { grid-template-columns: repeat(2, 1fr); }
+            .feature { border-right: 1px solid var(--border); }
+            .feature:nth-child(2n) { border-right: none; }
+            .feature:nth-last-child(-n+2) { border-bottom: none; }
+            .metrics { grid-template-columns: repeat(4, 1fr); }
+            .metric { border-bottom: none; }
+            .metric:nth-child(2n) { border-right: 1px solid var(--border); }
+            .metric:last-child { border-right: none; }
+            .footer-grid { grid-template-columns: 2fr 1fr 1fr; gap: 40px; }
+            .footer-brand { grid-column: 1; }
+            .footer-bottom { flex-direction: row; justify-content: space-between; align-items: center; }
+            .footer-bottom p { text-align: left; }
+        }
+
+        /* ===== DESKTOP ===== */
+        @media (min-width: 1024px) {
+            .hero-content { padding: 140px 48px 100px; }
+            .section-inner { padding: 120px 48px; }
+            .nav-inner { padding: 0 48px; }
+            .nav-links { display: flex; }
+            .menu-btn { display: none; }
+            .mobile-nav { display: none !important; }
+            .arch-grid { grid-template-columns: 1fr 1fr; }
+            .arch-left { border-right: 1px solid var(--border); border-bottom: none; padding: 40px; }
+            .arch-right { padding: 40px; }
+            .features-grid { grid-template-columns: repeat(3, 1fr); }
+            .feature { border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+            .feature:nth-child(2n) { border-right: 1px solid var(--border); }
+            .feature:nth-child(3n) { border-right: none; }
+            .feature:nth-last-child(-n+3) { border-bottom: none; }
+            .feature:nth-last-child(-n+2) { border-bottom: 1px solid var(--border); }
+            .charts { grid-template-columns: 1fr 1fr; }
+            .chart-box { border-right: 1px solid var(--border); border-bottom: none; }
+            .chart-box:last-child { border-right: none; }
+            .chart-canvas { height: 240px; }
+            .playground-wrap { grid-template-columns: 1fr 1fr; min-height: 500px; }
+            .playground-code { border-right: 1px solid var(--border); border-bottom: none; }
+            .playground-code .code-body { min-height: 280px; max-height: none; }
+            .footer-grid { grid-template-columns: 2fr 1fr 1fr 1fr 1fr; }
+            .footer-brand { grid-column: auto; }
+            .metric-value { font-size: 2rem; }
+            .metric { padding: 24px; }
+        }
+
+        /* Reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* Touch device optimizations */
+        @media (hover: none) {
+            .btn:hover { transform: none; box-shadow: none; }
+            .btn-primary:hover { background: var(--text); }
+            .feature:hover { transform: none; background: none; }
+            .feature:hover::before { width: 0; }
+            .arch-feature:hover .arch-icon { border-color: var(--border); background: var(--surface); }
+            .metric:hover { background: none; }
         }
     </style>
+<base target="_blank">
 </head>
-<body class="bg-black text-white overflow-x-hidden">
-    <section class="relative h-screen neural-grid overflow-hidden">
-        <div class="absolute inset-0 bg-gradient-to-b from-black via-transparent to-black z-10"></div>
-        <div id="neural-background" class="absolute inset-0"></div>
-    
-        <div class="absolute inset-0 flex items-center justify-between z-20 container mx-auto px-6 py-24">
-            <!-- Content on the left -->
-            <div class="w-full md:w-1/2 text-left">
-                <div class="mb-8 relative">
-                    <div class="absolute inset-0 bg-blue-500 blur-3xl opacity-20"></div>
-                    <h1 class="text-7xl md:text-9xl font-bold mb-6 tracking-tighter hero-text relative">
-                        <span class="bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600">
-                            Neuro
-                        </span>
-                        <span class="bg-clip-text text-transparent bg-gradient-to-r from-purple-600 via-pink-500 to-cyan-400">
-                            Verse 
-                        </span>
-                    </h1>
+<body>
+
+    <div class="cursor" id="cursor"></div>
+    <div class="cursor-dot" id="cursorDot"></div>
+
+    <!-- HERO: Canvas is now contained inside the hero section, not fixed -->
+    <div class="hero-section" id="heroSection">
+        <canvas id="hero-canvas"></canvas>
+
+        <nav id="navbar">
+            <div class="nav-inner">
+                <div class="logo">
+                    <div class="logo-mark">
+                        <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                    </div>
+                    NEUROVERSE
                 </div>
-                <p class="text-2xl md:text-4xl mb-12 text-gray-300 typing-effect" id="hero-subtitle">
-                    Redefining Neural Network Exploration
-                </p>
-                <div class="flex flex-wrap justify-start gap-6">
-                    <button class="cyber-button px-8 py-4 rounded-lg text-xl font-bold transition-all duration-300 transform hover:scale-110 neural-glow custom-shape">
-                        Launch Simulator
-                    </button>
-                    <button class="cyber-button px-8 py-4 rounded-lg text-xl font-bold transition-all duration-300 bg-purple-600 hover:bg-purple-700 custom-shape">
-                        Interactive Tutorial
-                    </button>
+                <div class="nav-links">
+                    <a href="#architect">Architecture</a>
+                    <a href="#training">Training</a>
+                    <a href="#features">Features</a>
                 </div>
+                <button class="menu-btn" id="menuBtn" aria-label="Toggle menu">
+                    <span></span><span></span><span></span>
+                </button>
+                <button class="btn btn-primary" style="padding: 10px 20px; font-size: 0.75rem; display: none;">Get Started</button>
             </div>
-    
-            <!-- GIF animation on the right -->
-            <div class="w-full md:w-1/2 flex justify-center items-center">
-                <div class="gif-container">
-                    <img src="Ai-Neural-Network.gif" alt="Neural Exploration" class="gif-inside">
+        </nav>
+
+        <div class="mobile-nav" id="mobileNav">
+            <a href="#architect" class="mobile-link">Architecture</a>
+            <a href="#training" class="mobile-link">Training</a>
+            <a href="#features" class="mobile-link">Features</a>
+        </div>
+
+        <div class="hero-content">
+            <div style="max-width: 600px;">
+                <div class="hero-badge">
+                    <span class="pulse-dot"></span>
+                    v2.0 Spatial Engine
+                </div>
+                <h1 class="hero-title">
+                    <span class="title-line"><span>Neural</span></span>
+                    <span class="title-line"><span class="line-accent">Field</span></span>
+                </h1>
+                <p class="hero-sub">A spatial workbench for designing, visualizing, and training neural architectures. No compromises. No templates.</p>
+                <div class="hero-actions">
+                    <button class="btn btn-primary">Launch Studio</button>
+                    <button class="btn btn-outline">Documentation</button>
                 </div>
             </div>
         </div>
-    
-        <div class="absolute bottom-10 left-1/2 transform -translate-x-1/2 z-20">
-            <div class="mouse-scroll animate-bounce">
-                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
-                </svg>
+
+        <a href="#architect" class="scroll-indicator" aria-label="Scroll to content">
+            <span>Scroll</span>
+            <div class="scroll-line"></div>
+        </a>
+    </div>
+
+    <section id="architect">
+        <div class="section-inner">
+            <div class="reveal">
+                <div class="section-label" id="arch-label">01 / Studio</div>
+                <h2>Neural Architect<br>Studio</h2>
+            </div>
+            <div class="arch-grid" id="arch-grid">
+                <div class="arch-left">
+                    <p style="color: var(--muted); line-height: 1.7; margin-bottom: 28px; opacity: 0; transform: translateY(20px); transition: all 0.8s var(--ease);" class="arch-text">
+                        Build topologies with surgical precision. Our spatial interface lets you manipulate layers, inspect gradient flows, and export production-ready PyTorch and JAX code.
+                    </p>
+                    <div id="arch-features">
+                        <div class="arch-feature" data-delay="0">
+                            <div class="arch-icon">
+                                <svg width="20" height="20" fill="none" stroke="var(--accent)" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                            </div>
+                            <div>
+                                <h4 style="font-weight: 600; margin-bottom: 4px; font-size: 0.95rem;">Quantum Backpropagation</h4>
+                                <p style="font-size: 0.85rem; color: var(--muted); line-height: 1.5;">Converge 100× faster with noise-adaptive optimizers.</p>
+                            </div>
+                        </div>
+                        <div class="arch-feature" data-delay="1">
+                            <div class="arch-icon">
+                                <svg width="20" height="20" fill="none" stroke="var(--accent)" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                            </div>
+                            <div>
+                                <h4 style="font-weight: 600; margin-bottom: 4px; font-size: 0.95rem;">Auto-Architecture Search</h4>
+                                <p style="font-size: 0.85rem; color: var(--muted); line-height: 1.5;">RL agents discover optimal depth and width.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="arch-right">
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span style="background: #ff5f56;"></span>
+                            <span style="background: #ffbd2e;"></span>
+                            <span style="background: #27c93f;"></span>
+                            <span style="margin-left: auto; font-size: 0.7rem; color: var(--muted);">sculptor.py</span>
+                        </div>
+                        <div class="code-body" id="typewriter-code"></div>
+                    </div>
+                    <svg id="mini-net" viewBox="0 0 400 200" preserveAspectRatio="xMidYMid meet"></svg>
+                </div>
             </div>
         </div>
     </section>
 
-    <!-- Interactive Network Builder -->
-    <section class="py-20 relative overflow-hidden">
-        <div class="container mx-auto px-4">
-            <h2 class="text-5xl md:text-6xl font-bold mb-16 text-center bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-600">
-                Advanced Neural Architect
-            </h2>
-            <div class="flex flex-wrap -mx-4">
-                <div class="w-full lg:w-2/3 px-4 mb-8">
-                    <div class="glassmorphism rounded-xl p-6 h-full transform hover:scale-105 transition-all duration-500">
-                        <div class="code-window mb-6">
-                            <div class="code-header">
-                                <div class="flex">
-                                    <div class="code-dot code-red"></div>
-                                    <div class="code-dot code-yellow"></div>
-                                    <div class="code-dot code-green"></div>
+    <section id="training">
+        <div class="section-inner">
+            <div class="reveal" style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
+                <div>
+                    <div class="section-label">02 / Lab</div>
+                    <h2>Real-Time<br>Training</h2>
+                </div>
+                <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: var(--surface); border: 1px solid var(--border);">
+                        <span id="status-dot" style="width: 8px; height: 8px; background: var(--muted); display: block; border-radius: 50%;"></span>
+                        <span id="status-text" style="font-size: 0.7rem; font-family: monospace; color: var(--muted);">IDLE</span>
+                    </div>
+                    <button id="train-btn" class="btn btn-primary" style="padding: 12px 24px; font-size: 0.8rem;">Start Training</button>
+                </div>
+            </div>
+
+            <div class="metrics" id="metrics">
+                <div class="metric" data-delay="0">
+                    <div class="metric-label">Epoch</div>
+                    <div class="metric-value" id="m-epoch" style="font-family: monospace; font-size: 1.25rem;">0/100</div>
+                    <div class="metric-bar"><div class="metric-bar-fill" id="m-epoch-bar"></div></div>
+                </div>
+                <div class="metric" data-delay="1">
+                    <div class="metric-label">Best Accuracy</div>
+                    <div class="metric-value" id="m-acc" style="color: var(--text); font-size: 1.25rem;">0.00%</div>
+                </div>
+                <div class="metric" data-delay="2">
+                    <div class="metric-label">Loss</div>
+                    <div class="metric-value" id="m-loss" style="color: var(--muted); font-size: 1.25rem;">2.847</div>
+                </div>
+                <div class="metric" data-delay="3">
+                    <div class="metric-label">Elapsed</div>
+                    <div class="metric-value" id="m-time" style="font-family: monospace; font-size: 1.25rem; color: var(--accent);">00:00</div>
+                </div>
+            </div>
+
+            <div class="charts" id="charts">
+                <div class="chart-box">
+                    <div class="chart-title">Loss Curves</div>
+                    <div class="chart-canvas"><canvas id="lossChart"></canvas></div>
+                </div>
+                <div class="chart-box">
+                    <div class="chart-title">Accuracy</div>
+                    <div class="chart-canvas"><canvas id="accChart"></canvas></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="features">
+        <div class="section-inner">
+            <div class="reveal">
+                <div class="section-label">03 / Capabilities</div>
+                <h2>Quantum-Neural<br>Features</h2>
+            </div>
+            <div class="features-grid">
+                <div class="feature reveal">
+                    <div class="feature-num">001</div>
+                    <h3>Quantum Backpropagation</h3>
+                    <p>Noise-adaptive optimizers leveraging quantum-inspired gradient estimation. 100× faster convergence.</p>
+                </div>
+                <div class="feature reveal">
+                    <div class="feature-num">002</div>
+                    <h3>Neural Architecture Search</h3>
+                    <p>RL agents discover optimal network depth, width, and connectivity automatically.</p>
+                </div>
+                <div class="feature reveal">
+                    <div class="feature-num">003</div>
+                    <h3>Explainable AI</h3>
+                    <p>Integrated attention visualization and SHAP attribution for every decision.</p>
+                </div>
+                <div class="feature reveal">
+                    <div class="feature-num">004</div>
+                    <h3>Model Compression</h3>
+                    <p>Structured pruning and quantization with less than 1% accuracy loss.</p>
+                </div>
+                <div class="feature reveal">
+                    <div class="feature-num">005</div>
+                    <h3>Federated Learning</h3>
+                    <p>Train across distributed devices with differential privacy protocols.</p>
+                </div>
+                <div class="feature reveal">
+                    <div class="feature-num">006</div>
+                    <h3>Live Monitoring</h3>
+                    <p>Real-time gradient flow and activation histogram tracking.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="playground">
+        <div class="section-inner">
+            <div class="reveal" style="text-align: center; margin-bottom: 32px;">
+                <div class="section-label">04 / Interactive</div>
+                <h2>Neural Playground</h2>
+            </div>
+
+            <div class="playground-wrap reveal">
+                <div class="playground-code">
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span style="background: #ff5f56;"></span>
+                            <span style="background: #ffbd2e;"></span>
+                            <span style="background: #27c93f;"></span>
+                            <span style="margin-left: auto; font-size: 0.7rem; color: var(--muted);">playground.py</span>
+                        </div>
+                        <div class="code-body" id="playground-code"></div>
+                    </div>
+                    <div class="playground-controls">
+                        <button id="run-btn" class="btn btn-primary" style="flex: 1; font-size: 0.8rem;">Run Forward Pass</button>
+                        <button id="reset-btn" class="btn btn-outline" style="font-size: 0.8rem;">Reset</button>
+                    </div>
+                </div>
+
+                <div class="playground-viz">
+                    <div class="viz-canvas-wrap">
+                        <canvas id="playground-canvas"></canvas>
+                        <div class="viz-overlay" id="viz-overlay">
+                            <div style="text-align: center;">
+                                <div style="width: 48px; height: 48px; background: var(--surface); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;">
+                                    <svg width="20" height="20" fill="none" stroke="var(--muted)" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                 </div>
-                                <span class="text-sm text-gray-400">network_architect.py</span>
+                                <p style="font-size: 0.75rem; color: var(--muted);">Tap "Run Forward Pass"</p>
                             </div>
-                            <div class="code-content">
-                                <pre><code class="language-python">class AdvancedNeuralArchitect:
-    def __init__(self):
-        self.layers = []
-        self.connections = []
-        
-    def add_layer(self, neurons, activation):
-        self.layers.append({
-            'neurons': neurons,
-            'activation': activation
-        })
-        
-    def compile(self, optimizer='adam'):
-        self.optimizer = optimizer
-        self.initialize_weights()
-        
-    def train(self, epochs=100):
-        for epoch in range(epochs):
-            self.forward_pass()
-            self.backward_pass()
-            self.update_weights()</code></pre>
-                            </div>
-                        </div>
-                        <div id="network-visualizer" class="h-96 relative">
-                            <!-- Neural network visualization will be rendered here -->
                         </div>
                     </div>
-                </div>
-                <div class="w-full lg:w-1/3 px-4 mb-8">
-                    <div class="glassmorphism rounded-xl p-6 h-full">
-                        <h3 class="text-2xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-green-400 to-cyan-500">Network Parameters</h3>
-                        <div class="space-y-6">
-                            <div>
-                                <label class="block text-sm font-medium mb-2 text-gray-300">Architecture</label>
-                                <select class="w-full bg-gray-800 rounded-lg p-3 border border-cyan-500 focus:border-blue-500 transition-all duration-300">
-                                    <option>Feedforward Neural Network</option>
-                                    <option>Convolutional Neural Network</option>
-                                    <option>Recurrent Neural Network</option>
-                                    <option>Transformer</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium mb-2 text-gray-300">Learning Rate</label>
-                                <input type="range" class="w-full" min="0.0001" max="0.1" step="0.0001" value="0.001">
-                                <div class="flex justify-between text-xs text-gray-400">
-                                    <span>0.0001</span>
-                                    <span>0.001</span>
-                                    <span>0.01</span>
-                                    <span>0.1</span>
-                                </div>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium mb-2 text-gray-300">Batch Size</label>
-                                <select class="w-full bg-gray-800 rounded-lg p-3 border border-cyan-500 focus:border-blue-500 transition-all duration-300">
-                                    <option>16</option>
-                                    <option>32</option>
-                                    <option>64</option>
-                                    <option>128</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium mb-2 text-gray-300">Activation Function</label>
-                                <select class="w-full bg-gray-800 rounded-lg p-3 border border-cyan-500 focus:border-blue-500 transition-all duration-300">
-                                    <option>ReLU</option>
-                                    <option>Leaky ReLU</option>
-                                    <option>Sigmoid</option>
-                                    <option>Tanh</option>
-                                </select>
-                            </div>
-                            <button class="w-full cyber-button py-3 rounded-lg font-bold transition-all duration-300 transform hover:scale-105">
-                                Initialize Network
-                            </button>
+                    <div class="playground-stats">
+                        <div class="play-stat">
+                            <div class="play-stat-label">Confidence</div>
+                            <div class="play-stat-value" id="p-conf" style="color: var(--accent);">--</div>
+                        </div>
+                        <div class="play-stat">
+                            <div class="play-stat-label">Predicted</div>
+                            <div class="play-stat-value" id="p-pred">--</div>
+                        </div>
+                        <div class="play-stat">
+                            <div class="play-stat-label">Latency</div>
+                            <div class="play-stat-value" id="p-lat">--</div>
                         </div>
                     </div>
                 </div>
@@ -383,537 +1135,956 @@
         </div>
     </section>
 
-    <!-- Real-Time Training Visualizer -->
-    <section class="py-20 relative overflow-hidden">
-        <div class="absolute inset-0 bg-gradient-to-b from-black via-purple-900/20 to-black"></div>
-        <div class="container mx-auto px-4 relative z-10">
-            <!-- Real-Time Training Visualizer (continued) -->
-            <h2 class="text-5xl md:text-6xl font-bold mb-16 text-center bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600">
-                Real-Time Training Analytics
-            </h2>
-            <div class="flex flex-wrap -mx-4">
-                <div class="w-full lg:w-1/2 px-4 mb-8">
-                    <div class="glassmorphism rounded-xl p-6 h-full transform hover:scale-105 transition-all duration-500">
-                        <canvas id="loss-chart" class="w-full h-80"></canvas>
+    <footer>
+        <div class="footer-inner">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <div class="logo">
+                        <div class="logo-mark">
+                            <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        </div>
+                        NEUROVERSE
+                    </div>
+                    <p>The spatial workbench for neural architecture design. Built for researchers defining the next decade of AI.</p>
+                    <div class="footer-input">
+                        <input type="email" placeholder="your@email.com" inputmode="email">
+                        <button>Subscribe</button>
                     </div>
                 </div>
-                <div class="w-full lg:w-1/2 px-4 mb-8">
-                    <div class="glassmorphism rounded-xl p-6 h-full transform hover:scale-105 transition-all duration-500">
-                        <canvas id="accuracy-chart" class="w-full h-80"></canvas>
-                    </div>
+                <div class="footer-col">
+                    <h4>Platform</h4>
+                    <a href="#">Architecture Studio</a>
+                    <a href="#">Training Lab</a>
+                    <a href="#">Model Zoo</a>
+                    <a href="#">API Reference</a>
+                </div>
+                <div class="footer-col">
+                    <h4>Company</h4>
+                    <a href="#">About</a>
+                    <a href="#">Research</a>
+                    <a href="#">Careers</a>
+                    <a href="#">Contact</a>
+                </div>
+                <div class="footer-col">
+                    <h4>Resources</h4>
+                    <a href="#">Documentation</a>
+                    <a href="#">Tutorials</a>
+                    <a href="#">Changelog</a>
+                    <a href="#">Status</a>
+                </div>
+                <div class="footer-col">
+                    <h4>Legal</h4>
+                    <a href="#">Privacy</a>
+                    <a href="#">Terms</a>
+                    <a href="#">Security</a>
                 </div>
             </div>
-            <div class="mt-12">
-                <div class="glassmorphism rounded-xl p-6">
-                    <h3 class="text-2xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-pink-400 to-purple-500">Training Progress</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div class="bg-gray-800 rounded-lg p-4">
-                            <h4 class="text-lg font-semibold mb-2 text-cyan-400">Epoch</h4>
-                            <p class="text-3xl font-bold" id="epoch-counter">0/100</p>
-                        </div>
-                        <div class="bg-gray-800 rounded-lg p-4">
-                            <h4 class="text-lg font-semibold mb-2 text-green-400">Best Accuracy</h4>
-                            <p class="text-3xl font-bold" id="best-accuracy">0.00%</p>
-                        </div>
-                        <div class="bg-gray-800 rounded-lg p-4">
-                            <h4 class="text-lg font-semibold mb-2 text-purple-400">Time Remaining</h4>
-                            <p class="text-3xl font-bold" id="time-remaining">00:00:00</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Advanced Features Section -->
-    <section class="py-20 relative overflow-hidden">
-        <div class="container mx-auto px-4">
-            <h2 class="text-5xl md:text-6xl font-bold mb-16 text-center bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-green-600">
-                Quantum Neural Features
-            </h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div class="glassmorphism p-8 rounded-xl transform hover:scale-105 transition-all duration-500">
-                    <div class="h-16 w-16 mb-6 neural-glow rounded-full bg-gradient-to-br from-blue-400 to-cyan-600 flex items-center justify-center">
-                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                        </svg>
-                    </div>
-                    <h3 class="text-2xl font-bold mb-4 text-cyan-400">Quantum Backpropagation</h3>
-                    <p class="text-gray-300">Experience lightning-fast training with our quantum-inspired backpropagation algorithm, achieving convergence up to 100x faster than traditional methods.</p>
-                </div>
-                <div class="glassmorphism p-8 rounded-xl transform hover:scale-105 transition-all duration-500">
-                    <div class="h-16 w-16 mb-6 neural-glow rounded-full bg-gradient-to-br from-green-400 to-cyan-600 flex items-center justify-center">
-                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-                        </svg>
-                    </div>
-                    <h3 class="text-2xl font-bold mb-4 text-green-400">Neural Architecture Search</h3>
-                    <p class="text-gray-300">Automatically discover optimal network architectures using advanced reinforcement learning techniques, eliminating the need for manual architecture design.</p>
-                </div>
-                <div class="glassmorphism p-8 rounded-xl transform hover:scale-105 transition-all duration-500">
-                    <div class="h-16 w-16 mb-6 neural-glow rounded-full bg-gradient-to-br from-purple-400 to-pink-600 flex items-center justify-center">
-                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"></path>
-                        </svg>
-                    </div>
-                    <h3 class="text-2xl font-bold mb-4 text-purple-400">Explainable AI</h3>
-                    <p class="text-gray-300">Understand your model's decision-making process with cutting-edge visualization techniques and attribution methods.</p>
+            <div class="footer-bottom">
+                <p> 2026 NeuroVerse Labs. All rights reserved.</p>
+                <div class="footer-social">
+                    <a href="#" aria-label="GitHub"><svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg></a>
+                    <a href="#" aria-label="Twitter"><svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/></svg></a>
                 </div>
             </div>
         </div>
-    </section>
-
-    <!-- Interactive Playground -->
-    <section class="py-20 relative overflow-hidden bg-gray-900">
-        <div class="container mx-auto px-4">
-            <h2 class="text-5xl md:text-6xl font-bold mb-16 text-center bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 to-orange-600">
-                Neural Playground
-            </h2>
-            <div class="flex flex-wrap -mx-4">
-                <div class="w-full lg:w-1/2 px-4 mb-8">
-                    <div class="glassmorphism rounded-xl p-6 h-full">
-                        <div class="code-window mb-6">
-                            <div class="code-header">
-                                <div class="flex">
-                                    <div class="code-dot code-red"></div>
-                                    <div class="code-dot code-yellow"></div>
-                                    <div class="code-dot code-green"></div>
-                                </div>
-                                <span class="text-sm text-gray-400">playground.py</span>
-                            </div>
-                            <div class="code-content">
-                                <pre><code class="language-python" id="playground-code">
-import neuroverse as nv
-
-# Create a neural playground
-playground = nv.NeuralPlayground()
-
-# Add interactive elements
-playground.add_input_layer(neurons=5)
-playground.add_hidden_layer(neurons=8, activation='relu')
-playground.add_output_layer(neurons=3, activation='softmax')
-
-# Start interaction
-playground.initialize()
-playground.run_simulation()
-                                </code></pre>
-                            </div>
-                        </div>
-                        <div class="flex space-x-4">
-                            <button class="cyber-button px-6 py-3 rounded-lg font-bold transition-all duration-300">
-                                Run Code
-                            </button>
-                            <button class="cyber-button px-6 py-3 rounded-lg font-bold transition-all duration-300 bg-purple-600 hover:bg-purple-700">
-                                Reset
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                <div class="w-full lg:w-1/2 px-4 mb-8">
-                    <div class="glassmorphism rounded-xl p-6 h-full" id="playground-output">
-                        <!-- Interactive playground output will be rendered here -->
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
+    </footer>
 
     <script>
-        // Initialize Three.js Neural Background
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ alpha: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        document.getElementById('neural-background').appendChild(renderer.domElement);
+    (function() {
+        'use strict';
 
-        // Create neural particle system
-        const particlesGeometry = new THREE.BufferGeometry();
-        const particleCount = 1000;
-        const positions = new Float32Array(particleCount * 3);
-        const velocities = new Float32Array(particleCount * 3);
-        const colors = new Float32Array(particleCount * 3);
+        const isTouch = window.matchMedia('(pointer: coarse)').matches;
+        const isMobile = window.innerWidth < 768;
 
-        for (let i = 0; i < particleCount * 3; i += 3) {
-            positions[i] = (Math.random() - 0.5) * 1000;
-            positions[i + 1] = (Math.random() - 0.5) * 1000;
-            positions[i + 2] = (Math.random() - 0.5) * 1000;
-            
-            velocities[i] = (Math.random() - 0.5) * 0.2;
-            velocities[i + 1] = (Math.random() - 0.5) * 0.2;
-            velocities[i + 2] = (Math.random() - 0.5) * 0.2;
+        // ===== CURSOR =====
+        const cursor = document.getElementById('cursor');
+        const dot = document.getElementById('cursorDot');
+        let cx = window.innerWidth/2, cy = window.innerHeight/2, rx = cx, ry = cy;
 
-            colors[i] = Math.random();
-            colors[i + 1] = Math.random();
-            colors[i + 2] = Math.random();
+        if (!isTouch) {
+            document.addEventListener('mousemove', e => {
+                cx = e.clientX; cy = e.clientY;
+                dot.style.left = cx + 'px'; dot.style.top = cy + 'px';
+            }, {passive:true});
+            function loop() {
+                rx += (cx - rx) * 0.15; ry += (cy - ry) * 0.15;
+                cursor.style.left = rx + 'px'; cursor.style.top = ry + 'px';
+                requestAnimationFrame(loop);
+            }
+            loop();
+            document.querySelectorAll('a, button, .btn, .feature, .metric').forEach(el => {
+                el.addEventListener('mouseenter', () => cursor.classList.add('hover'));
+                el.addEventListener('mouseleave', () => cursor.classList.remove('hover'));
+            });
         }
 
-        particlesGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-        particlesGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-        
-        const particlesMaterial = new THREE.PointsMaterial({
-            size: 2,
-            vertexColors: true,
-            transparent: true,
-            opacity: 0.8,
-            blending: THREE.AdditiveBlending
+        // ===== MOBILE MENU =====
+        const menuBtn = document.getElementById('menuBtn');
+        const mobileNav = document.getElementById('mobileNav');
+        const mobileLinks = document.querySelectorAll('.mobile-link');
+
+        menuBtn.addEventListener('click', () => {
+            menuBtn.classList.toggle('active');
+            mobileNav.classList.toggle('open');
+            document.body.style.overflow = mobileNav.classList.contains('open') ? 'hidden' : '';
         });
 
-        const particleSystem = new THREE.Points(particlesGeometry, particlesMaterial);
-        scene.add(particleSystem);
-
-        camera.position.z = 500;
-
-        // Neural connection lines
-        const linesMaterial = new THREE.LineBasicMaterial({
-            color: 0x00ff00,
-            transparent: true,
-            opacity: 0.2
+        mobileLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                menuBtn.classList.remove('active');
+                mobileNav.classList.remove('open');
+                document.body.style.overflow = '';
+            });
         });
 
-        const linesGeometry = new THREE.BufferGeometry();
-        const linePositions = new Float32Array(particleCount * 6);
-        linesGeometry.setAttribute('position', new THREE.BufferAttribute(linePositions, 3));
-        const lines = new THREE.LineSegments(linesGeometry, linesMaterial);
-        scene.add(lines);
-
-        // Animation loop
-        function animate() {
-            requestAnimationFrame(animate);
-
-            const positions = particlesGeometry.attributes.position.array;
-            const colors = particlesGeometry.attributes.color.array;
-            const linePositions = lines.geometry.attributes.position.array;
-            let lineIndex = 0;
-
-            for (let i = 0; i < positions.length; i += 3) {
-                // Update particle positions
-                positions[i] += velocities[i];
-                positions[i + 1] += velocities[i + 1];
-                positions[i + 2] += velocities[i + 2];
-
-                // Color pulsing
-                colors[i] = Math.sin(Date.now() * 0.001 + i) * 0.5 + 0.5;
-                colors[i + 1] = Math.cos(Date.now() * 0.001 + i) * 0.5 + 0.5;
-                colors[i + 2] = Math.sin(Date.now() * 0.002 + i) * 0.5 + 0.5;
-
-                // Boundary check and reverse velocity if needed
-                if (Math.abs(positions[i]) > 500) velocities[i] *= -1;
-                if (Math.abs(positions[i + 1]) > 500) velocities[i + 1] *= -1;
-                if (Math.abs(positions[i + 2]) > 500) velocities[i + 2] *= -1;
-
-                // Create connections between nearby particles
-                if (i < positions.length - 3) {
-                    const dx = positions[i] - positions[i + 3];
-                    const dy = positions[i + 1] - positions[i + 4];
-                    const dz = positions[i + 2] - positions[i + 5];
-                    const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-
-                    if (distance < 100) {
-                        linePositions[lineIndex++] = positions[i];
-                        linePositions[lineIndex++] = positions[i + 1];
-                        linePositions[lineIndex++] = positions[i + 2];
-                        linePositions[lineIndex++] = positions[i + 3];
-                        linePositions[lineIndex++] = positions[i + 4];
-                        linePositions[lineIndex++] = positions[i + 5];
-                    }
+        // ===== NAV SCROLL =====
+        const navbar = document.getElementById('navbar');
+        let lastScroll = 0;
+        window.addEventListener('scroll', () => {
+            const y = window.scrollY;
+            navbar.classList.toggle('scrolled', y > 50);
+            if (isMobile) {
+                if (y > lastScroll && y > 100) {
+                    navbar.style.transform = 'translateY(-100%)';
+                } else {
+                    navbar.style.transform = 'translateY(0)';
                 }
             }
+            lastScroll = y;
+        }, {passive:true});
+        navbar.style.transition = 'transform 0.3s var(--ease), background 0.4s var(--ease), border-color 0.4s var(--ease)';
 
-            particlesGeometry.attributes.position.needsUpdate = true;
-            particlesGeometry.attributes.color.needsUpdate = true;
-            lines.geometry.attributes.position.needsUpdate = true;
-
-            particleSystem.rotation.x += 0.0005;
-            particleSystem.rotation.y += 0.0005;
-
-            renderer.render(scene, camera);
-        }
-        animate();
-
-        // Initialize charts
-        const lossChartCtx = document.getElementById('loss-chart').getContext('2d');
-        const accuracyChartCtx = document.getElementById('accuracy-chart').getContext('2d');
-
-        Chart.defaults.color = '#a0aec0';
-        Chart.defaults.borderColor = '#2d3748';
-
-        const lossChart = new Chart(lossChartCtx, {
-            type: 'line',
-            data: {
-                labels: [],
-                datasets: [{
-                    label: 'Training Loss',
-                    data: [],
-                    borderColor: 'rgb(255, 99, 132)',
-                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                    tension: 0.4,
-                    fill: true
-                }, {
-                    label: 'Validation Loss',
-                    data: [],
-                    borderColor: 'rgb(75, 192, 192)',
-                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                    tension: 0.4,
-                    fill: true
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    title: {
-                        display: true,
-                        text: 'Training & Validation Loss',
-                        font: {
-                            size: 16,
-                            weight: 'bold'
-                        }
-                    },
-                    legend: {
-                        position: 'bottom'
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        grid: {
-                            color: 'rgba(255, 255, 255, 0.1)'
-                        }
-                    },
-                    x: {
-                        grid: {
-                            color: 'rgba(255, 255, 255, 0.1)'
-                        }
-                    }
+        // ===== SCROLL REVEAL =====
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(e => {
+                if (e.isIntersecting) {
+                    e.target.classList.add('visible');
+                    observer.unobserve(e.target);
                 }
-            }
-        });
+            });
+        }, {threshold: 0.1, rootMargin: '0px 0px -40px 0px'});
+        document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 
-        const accuracyChart = new Chart(accuracyChartCtx, {
-            type: 'line',
-            data: {
-                labels: [],
-                datasets: [{
-                    label: 'Training Accuracy',
-                    data: [],
-                    borderColor: 'rgb(54, 162, 235)',
-                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                    tension: 0.4,
-                    fill: true
-                }, {
-                    label: 'Validation Accuracy',
-                    data: [],
-                    borderColor: 'rgb(153, 102, 255)',
-                    backgroundColor: 'rgba(153, 102, 255, 0.2)',
-                    tension: 0.4,
-                    fill: true
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    title: {
-                        display: true,
-                        text: 'Training & Validation Accuracy',
-                        font: {
-                            size: 16,
-                            weight: 'bold'
-                        }
-                    },
-                    legend: {
-                        position: 'bottom'
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        max: 100,
-                        grid: {
-                            color: 'rgba(255, 255, 255, 0.1)'
-                        }
-                    },
-                    x: {
-                        grid: {
-                            color: 'rgba(255, 255, 255, 0.1)'
-                        }
-                    }
-                }
-            }
-        });
-
-        // Neural Network Simulator
-        class NeuralNetwork {
-            constructor() {
-                this.layers = [4, 8, 6, 4];
-                this.neurons = [];
-                this.connections = [];
-                this.learningRate = 0.01;
-                this.epoch = 0;
-                this.maxEpochs = 100;
-                this.bestAccuracy = 0;
-                this.startTime = Date.now();
-                this.initializeNetwork();
-            }
-
-            initializeNetwork() {
-                const visualizer = document.getElementById('network-visualizer');
-                const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-                svg.setAttribute('width', '100%');
-                svg.setAttribute('height', '100%');
-                visualizer.appendChild(svg);
-
-                let xOffset = 50;
-                const layerSpacing = (visualizer.clientWidth - 100) / (this.layers.length - 1);
-
-                this.layers.forEach((neuronsInLayer, layerIndex) => {
-                    const neurons = [];
-                    const yOffset = visualizer.clientHeight / 2;
-                    const neuronSpacing = Math.min(
-                        visualizer.clientHeight / (neuronsInLayer + 1),
-                        40
-                    );
-
-                    for (let i = 0; i < neuronsInLayer; i++) {
-                        const neuron = {
-                            x: xOffset,
-                            y: yOffset + (i - neuronsInLayer / 2) * neuronSpacing,
-                            value: Math.random(),
-                            layer: layerIndex
-                        };
-                        neurons.push(neuron);
-                        this.drawNeuron(svg, neuron);
-                    }
-
-                    if (layerIndex > 0) {
-                        const prevLayer = this.neurons[layerIndex - 1];
-                        neurons.forEach(neuron => {
-                            prevLayer.forEach(prevNeuron => {
-                                const weight = Math.random() * 2 - 1;
-                                this.connections.push({
-                                    from: prevNeuron,
-                                    to: neuron,
-                                    weight: weight
-                                });
-                                this.drawConnection(svg, prevNeuron, neuron, weight);
-                            });
+        // Architecture section staggered reveals
+        const archObserver = new IntersectionObserver((entries) => {
+            entries.forEach(e => {
+                if (e.isIntersecting) {
+                    const el = e.target;
+                    if (el.id === 'arch-grid') {
+                        el.classList.add('visible');
+                        const text = el.querySelector('.arch-text');
+                        if (text) setTimeout(() => { text.style.opacity = '1'; text.style.transform = 'translateY(0)'; }, 200);
+                        const features = el.querySelectorAll('.arch-feature');
+                        features.forEach((f, i) => {
+                            setTimeout(() => f.classList.add('visible'), 400 + i * 200);
                         });
                     }
+                    if (el.id === 'arch-label') el.classList.add('visible');
+                    archObserver.unobserve(el);
+                }
+            });
+        }, {threshold: 0.15});
+        document.querySelectorAll('#arch-grid, #arch-label').forEach(el => archObserver.observe(el));
 
-                    this.neurons.push(neurons);
-                    xOffset += layerSpacing;
+        // Metrics stagger
+        const metricsObs = new IntersectionObserver((entries) => {
+            entries.forEach(e => {
+                if (e.isIntersecting) {
+                    const metrics = e.target.querySelectorAll('.metric');
+                    metrics.forEach((m, i) => {
+                        setTimeout(() => m.classList.add('visible'), i * 120);
+                    });
+                    metricsObs.unobserve(e.target);
+                }
+            });
+        }, {threshold: 0.2});
+        const metricsEl = document.getElementById('metrics');
+        if (metricsEl) metricsObs.observe(metricsEl);
+
+        // Charts reveal
+        const chartsObs = new IntersectionObserver((entries) => {
+            entries.forEach(e => {
+                if (e.isIntersecting) {
+                    e.target.classList.add('visible');
+                    chartsObs.unobserve(e.target);
+                }
+            });
+        }, {threshold: 0.15});
+        const chartsEl = document.getElementById('charts');
+        if (chartsEl) chartsObs.observe(chartsEl);
+
+        // ============================================================
+        // HERO: CONTAINED CANVAS — sized to hero section, not viewport
+        // ============================================================
+        const heroSection = document.getElementById('heroSection');
+        const canvas = document.getElementById('hero-canvas');
+        const ctx = canvas.getContext('2d');
+        let W, H;
+
+        function resizeHeroCanvas() {
+            const rect = heroSection.getBoundingClientRect();
+            const dpr = Math.min(window.devicePixelRatio || 1, isMobile ? 1.5 : 2);
+            W = canvas.width = rect.width * dpr;
+            H = canvas.height = rect.height * dpr;
+            canvas.style.width = rect.width + 'px';
+            canvas.style.height = rect.height + 'px';
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            W = rect.width;
+            H = rect.height;
+        }
+
+        // Use ResizeObserver on the hero section itself
+        const heroRO = new ResizeObserver(() => {
+            resizeHeroCanvas();
+            buildNetwork();
+        });
+        heroRO.observe(heroSection);
+        resizeHeroCanvas();
+
+        // Adaptive layer sizes based on screen
+        const layers = isMobile ? [4, 6, 5, 4, 3] : [6, 10, 8, 6, 4];
+        const nodes = [];
+        const edges = [];
+        const signals = [];
+        const trails = [];
+
+        const marginX = () => W * 0.1;
+        const marginY = () => H * 0.1;
+
+        function buildNetwork() {
+            nodes.length = 0; edges.length = 0;
+            const mx = marginX(), my = marginY();
+            layers.forEach((count, li) => {
+                const x = mx + (li / (layers.length - 1)) * (W - 2 * mx);
+                const spacing = (H - 2 * my) / (count + 1);
+                for (let i = 0; i < count; i++) {
+                    const y = my + (i + 1) * spacing;
+                    nodes.push({
+                        x: x, y: y,
+                        ox: x, oy: y,
+                        vx: 0, vy: 0,
+                        layer: li, index: i,
+                        radius: li === 0 ? 4 : li === layers.length - 1 ? 5 : 3,
+                        pulse: Math.random() * Math.PI * 2,
+                        value: Math.random(),
+                        activation: 0
+                    });
+                }
+            });
+
+            const layerOffsets = [];
+            layers.reduce((acc, c) => { layerOffsets.push(acc); return acc + c; }, 0);
+
+            for (let li = 0; li < layers.length - 1; li++) {
+                const start = layerOffsets[li];
+                const end = layerOffsets[li + 1];
+                for (let i = 0; i < layers[li]; i++) {
+                    for (let j = 0; j < layers[li + 1]; j++) {
+                        edges.push({
+                            from: start + i,
+                            to: end + j,
+                            weight: Math.random() * 2 - 1,
+                            signalPhase: Math.random() * Math.PI * 2,
+                            activity: 0
+                        });
+                    }
+                }
+            }
+        }
+        buildNetwork();
+
+        let mx = W/2, my = H/2;
+
+        // Track mouse/touch relative to hero section
+        function getPointerPos(e) {
+            const rect = heroSection.getBoundingClientRect();
+            if (e.touches && e.touches.length > 0) {
+                return {
+                    x: e.touches[0].clientX - rect.left,
+                    y: e.touches[0].clientY - rect.top
+                };
+            }
+            return {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            };
+        }
+
+        if (isTouch) {
+            heroSection.addEventListener('touchmove', e => {
+                const pos = getPointerPos(e);
+                mx = pos.x; my = pos.y;
+            }, {passive:true});
+            heroSection.addEventListener('touchstart', e => {
+                const pos = getPointerPos(e);
+                mx = pos.x; my = pos.y;
+            }, {passive:true});
+        } else {
+            heroSection.addEventListener('mousemove', e => {
+                const pos = getPointerPos(e);
+                mx = pos.x; my = pos.y;
+            }, {passive:true});
+        }
+
+        function spawnSignal() {
+            const layer0 = nodes.filter(n => n.layer === 0);
+            if (!layer0.length) return;
+            const startNode = layer0[Math.floor(Math.random() * layer0.length)];
+            const nextLayer = nodes.filter(n => n.layer === 1);
+            if (!nextLayer.length) return;
+            const endNode = nextLayer[Math.floor(Math.random() * nextLayer.length)];
+
+            signals.push({
+                from: startNode,
+                to: endNode,
+                progress: 0,
+                speed: 0.025 + Math.random() * 0.015,
+                path: [startNode, endNode],
+                currentHop: 0,
+                alive: true,
+                color: Math.random() > 0.3 ? '#ff4d00' : '#f0eee9',
+                size: 2 + Math.random() * 2
+            });
+        }
+
+        const gridCols = isMobile ? 15 : 30;
+        const gridRows = isMobile ? 10 : 20;
+
+        let time = 0;
+        let frameCount = 0;
+
+        function animateHero() {
+            ctx.fillStyle = 'rgba(12, 12, 12, 0.15)';
+            ctx.fillRect(0, 0, W, H);
+            time += 0.016;
+            frameCount++;
+
+            if (!isMobile || frameCount % 2 === 0) {
+                ctx.strokeStyle = 'rgba(42, 42, 42, 0.2)';
+                ctx.lineWidth = 0.5;
+                const cellW = W / gridCols;
+                const cellH = H / gridRows;
+
+                for (let i = 0; i <= gridCols; i++) {
+                    const x = i * cellW;
+                    const warp = Math.sin(time * 0.5 + i * 0.2) * 2;
+                    ctx.beginPath();
+                    ctx.moveTo(x + warp, 0);
+                    ctx.lineTo(x + warp, H);
+                    ctx.stroke();
+                }
+                for (let j = 0; j <= gridRows; j++) {
+                    const y = j * cellH;
+                    const warp = Math.cos(time * 0.3 + j * 0.2) * 2;
+                    ctx.beginPath();
+                    ctx.moveTo(0, y + warp);
+                    ctx.lineTo(W, y + warp);
+                    ctx.stroke();
+                }
+            }
+
+            if (Math.random() < (isMobile ? 0.15 : 0.2)) spawnSignal();
+
+            nodes.forEach(n => {
+                const dx = n.ox - n.x;
+                const dy = n.oy - n.y;
+                n.vx += dx * 0.025;
+                n.vy += dy * 0.025;
+
+                const mdx = n.x - mx;
+                const mdy = n.y - my;
+                const mdist = Math.sqrt(mdx*mdx + mdy*mdy);
+                if (mdist < 250 && mdist > 0) {
+                    const force = (250 - mdist) / 250 * 3;
+                    n.vx += (mdx / mdist) * force;
+                    n.vy += (mdy / mdist) * force;
+                }
+
+                const sameLayer = nodes.filter(o => o.layer === n.layer && o !== n);
+                sameLayer.forEach(o => {
+                    const sdx = o.x - n.x;
+                    const sdy = o.y - n.y;
+                    const sdist = Math.sqrt(sdx*sdx + sdy*sdy);
+                    if (sdist > 0) {
+                        n.vx += (sdx / sdist) * 0.01;
+                        n.vy += (sdy / sdist) * 0.01;
+                    }
+                });
+
+                n.vx *= 0.94;
+                n.vy *= 0.94;
+                n.x += n.vx;
+                n.y += n.vy;
+
+                n.pulse += 0.04;
+                n.value = 0.5 + 0.5 * Math.sin(n.pulse);
+                n.activation *= 0.98;
+            });
+
+            edges.forEach(e => { e.activity *= 0.95; });
+
+            ctx.save();
+            ctx.globalCompositeOperation = 'screen';
+            edges.forEach(e => {
+                const a = nodes[e.from];
+                const b = nodes[e.to];
+                if (!a || !b) return;
+
+                let glow = 0.03;
+                signals.forEach(s => {
+                    if (!s.alive) return;
+                    const sa = s.path[s.currentHop];
+                    const sb = s.path[s.currentHop + 1] || s.to;
+                    if ((sa === a && sb === b) || (sa === a && sb === b)) {
+                        const dist = 1 - Math.abs(s.progress - 0.5) * 2;
+                        glow += dist * 0.5;
+                        e.activity = Math.max(e.activity, dist);
+                    }
+                });
+                glow += e.activity * 0.3;
+
+                if (glow > 0.05) {
+                    ctx.beginPath();
+                    ctx.moveTo(a.x, a.y);
+                    ctx.lineTo(b.x, b.y);
+                    ctx.strokeStyle = `rgba(255, 77, 0, ${glow * 0.6})`;
+                    ctx.lineWidth = glow * 4;
+                    ctx.stroke();
+                }
+
+                ctx.beginPath();
+                ctx.moveTo(a.x, a.y);
+                ctx.lineTo(b.x, b.y);
+                ctx.strokeStyle = `rgba(42, 42, 42, ${0.3 + e.activity * 0.4})`;
+                ctx.lineWidth = 0.5 + e.activity * 1.5;
+                ctx.stroke();
+            });
+            ctx.restore();
+
+            signals.forEach((s, i) => {
+                if (!s.alive) return;
+                s.progress += s.speed;
+
+                if (s.progress >= 1) {
+                    s.currentHop++;
+                    if (s.currentHop >= s.path.length - 1) {
+                        s.alive = false;
+                        const currentNode = s.to;
+                        currentNode.activation = 1;
+                        if (currentNode.layer < layers.length - 1) {
+                            const nextLayer = nodes.filter(n => n.layer === currentNode.layer + 1);
+                            if (nextLayer.length) {
+                                const next = nextLayer[Math.floor(Math.random() * nextLayer.length)];
+                                signals.push({
+                                    from: currentNode,
+                                    to: next,
+                                    progress: 0,
+                                    speed: 0.025 + Math.random() * 0.015,
+                                    path: [currentNode, next],
+                                    currentHop: 0,
+                                    alive: true,
+                                    color: s.color,
+                                    size: s.size
+                                });
+                            }
+                        }
+                    } else {
+                        s.progress = 0;
+                    }
+                }
+
+                if (!s.alive) return;
+
+                const a = s.path[s.currentHop];
+                const b = s.path[s.currentHop + 1] || s.to;
+                if (!a || !b) return;
+                const x = a.x + (b.x - a.x) * s.progress;
+                const y = a.y + (b.y - a.y) * s.progress;
+
+                trails.push({x, y, color: s.color, life: 1.0, size: s.size});
+
+                if (!isMobile || frameCount % 2 === 0) {
+                    ctx.save();
+                    ctx.globalCompositeOperation = 'screen';
+                    const grad = ctx.createRadialGradient(x, y, 0, x, y, 20);
+                    grad.addColorStop(0, s.color === '#ff4d00' ? 'rgba(255,77,0,0.8)' : 'rgba(240,238,233,0.6)');
+                    grad.addColorStop(0.5, s.color === '#ff4d00' ? 'rgba(255,77,0,0.2)' : 'rgba(240,238,233,0.1)');
+                    grad.addColorStop(1, 'rgba(255,77,0,0)');
+                    ctx.fillStyle = grad;
+                    ctx.beginPath();
+                    ctx.arc(x, y, 20, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+
+                ctx.fillStyle = s.color;
+                ctx.beginPath();
+                ctx.arc(x, y, s.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            for (let i = trails.length - 1; i >= 0; i--) {
+                const t = trails[i];
+                t.life -= 0.03;
+                if (t.life <= 0) {
+                    trails.splice(i, 1);
+                    continue;
+                }
+                if (isMobile && i % 2 !== 0) continue;
+                ctx.save();
+                ctx.globalCompositeOperation = 'screen';
+                ctx.fillStyle = t.color === '#ff4d00' 
+                    ? `rgba(255, 77, 0, ${t.life * 0.4})` 
+                    : `rgba(240, 238, 233, ${t.life * 0.3})`;
+                ctx.beginPath();
+                ctx.arc(t.x, t.y, t.size * t.life * 2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            for (let i = signals.length - 1; i >= 0; i--) {
+                if (!signals[i].alive) signals.splice(i, 1);
+            }
+            const maxSignals = isMobile ? 30 : 60;
+            const maxTrails = isMobile ? 80 : 200;
+            if (signals.length > maxSignals) signals.splice(0, signals.length - maxSignals);
+            if (trails.length > maxTrails) trails.splice(0, trails.length - maxTrails);
+
+            nodes.forEach(n => {
+                const isActive = n.activation > 0.1;
+                const glowSize = (n.value * 10 + (isActive ? 16 : 0)) * (1 + n.layer * 0.2);
+
+                ctx.save();
+                ctx.globalCompositeOperation = 'screen';
+                const grad = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, glowSize);
+                const color = n.layer === 0 ? '255,77,0' : n.layer === layers.length - 1 ? '240,238,233' : '138,136,132';
+                const alpha = 0.2 + n.value * 0.3 + n.activation * 0.5;
+                grad.addColorStop(0, `rgba(${color},${alpha})`);
+                grad.addColorStop(0.5, `rgba(${color},${alpha * 0.5})`);
+                grad.addColorStop(1, `rgba(${color},0)`);
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.arc(n.x, n.y, glowSize, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+
+                ctx.fillStyle = n.layer === 0 ? '#ff4d00' : n.layer === layers.length - 1 ? '#f0eee9' : '#8a8884';
+                ctx.beginPath();
+                ctx.arc(n.x, n.y, n.radius + (isActive ? 2 : 0), 0, Math.PI * 2);
+                ctx.fill();
+
+                if (isActive && !isMobile) {
+                    ctx.strokeStyle = `rgba(255, 77, 0, ${n.activation})`;
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(n.x, n.y, n.radius + 6, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+            });
+
+            if (!isMobile) {
+                ctx.fillStyle = 'rgba(138, 136, 132, 0.3)';
+                ctx.font = '10px Inter';
+                ctx.textAlign = 'center';
+                const labels = ['INPUT', 'HIDDEN', 'HIDDEN', 'HIDDEN', 'OUTPUT'];
+                const mx2 = marginX(), my2 = marginY();
+                layers.forEach((_, li) => {
+                    const x = mx2 + (li / (layers.length - 1)) * (W - 2 * mx2);
+                    ctx.fillText(labels[li] || '', x, H - my2 + 20);
                 });
             }
 
-            drawNeuron(svg, neuron) {
-                const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
-                group.classList.add('network-node');
+            requestAnimationFrame(animateHero);
+        }
+        animateHero();
 
-                const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-                circle.setAttribute('cx', neuron.x);
-                circle.setAttribute('cy', neuron.y);
-                circle.setAttribute('r', '8');
-                circle.setAttribute('fill', `rgb(0, ${Math.floor(neuron.value * 255)}, 255)`);
+        // ============================================================
+        // MINI NETWORK SVG
+        // ============================================================
+        function drawMiniNet() {
+            const svg = document.getElementById('mini-net');
+            if (!svg) return;
+            const layers = isMobile ? [3, 5, 5, 4, 2] : [4, 7, 7, 5, 3];
+            const w = 400, h = 200, pad = 20;
+            const lx = layers.map((_, i) => pad + (i * (w - 2*pad) / (layers.length-1)));
 
-                const glow = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-                glow.setAttribute('cx', neuron.x);
-                glow.setAttribute('cy', neuron.y);
-                glow.setAttribute('r', '12');
-                glow.setAttribute('fill', 'none');
-                glow.setAttribute('stroke', `rgba(0, ${Math.floor(neuron.value * 255)}, 255, 0.5)`);
-                glow.setAttribute('stroke-width', '2');
-                glow.classList.add('neural-glow');
+            svg.innerHTML = '';
+            const positions = [];
 
-                group.appendChild(glow);
-                group.appendChild(circle);
-                svg.appendChild(group);
+            layers.forEach((count, li) => {
+                const ys = [];
+                const spacing = (h - 2*pad) / (count + 1);
+                for (let i = 0; i < count; i++) {
+                    ys.push(pad + (i + 1) * spacing);
+                    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+                    g.innerHTML = `
+                        <circle cx="${lx[li]}" cy="${ys[i]}" r="4" fill="${li === 0 ? '#ff4d00' : li === layers.length-1 ? '#f0eee9' : '#3a3a3a'}" opacity="0.6">
+                            <animate attributeName="r" values="4;6;4" dur="${2 + Math.random() * 2}s" repeatCount="indefinite" />
+                            <animate attributeName="opacity" values="0.6;1;0.6" dur="${2 + Math.random() * 2}s" repeatCount="indefinite" />
+                        </circle>
+                    `;
+                    svg.appendChild(g);
+                }
+                positions.push(ys.map(y => ({x: lx[li], y})));
+            });
+
+            for (let l = 0; l < layers.length - 1; l++) {
+                for (let i = 0; i < layers[l]; i++) {
+                    for (let j = 0; j < layers[l+1]; j++) {
+                        const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+                        line.setAttribute('x1', positions[l][i].x);
+                        line.setAttribute('y1', positions[l][i].y);
+                        line.setAttribute('x2', positions[l+1][j].x);
+                        line.setAttribute('y2', positions[l+1][j].y);
+                        line.setAttribute('stroke', '#2a2a2a');
+                        line.setAttribute('stroke-width', '0.5');
+                        line.setAttribute('opacity', '0.5');
+
+                        if (Math.random() < 0.05) {
+                            const dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
+                            dot.setAttribute('r', '2');
+                            dot.setAttribute('fill', '#ff4d00');
+                            dot.innerHTML = `
+                                <animateMotion dur="${1 + Math.random()}s" repeatCount="indefinite" path="M${positions[l][i].x},${positions[l][i].y} L${positions[l+1][j].x},${positions[l+1][j].y}" />
+                                <animate attributeName="opacity" values="0;1;0" dur="${1 + Math.random()}s" repeatCount="indefinite" />
+                            `;
+                            svg.appendChild(dot);
+                        }
+                        svg.appendChild(line);
+                    }
+                }
+            }
+        }
+        drawMiniNet();
+
+        // ============================================================
+        // TYPEWRITER
+        // ============================================================
+        const codeText = `<span class="tk-k">import</span> neuroverse <span class="tk-k">as</span> nv
+<span class="tk-k">from</span> neuroverse.layers <span class="tk-k">import</span> NeuronBlock, AttentionHead
+
+<span class="tk-c"># Initialize spatial compute graph</span>
+graph = nv.ComputeGraph(device=<span class="tk-s">"cuda"</span>, mixed=<span class="tk-k">True</span>)
+
+<span class="tk-c"># Sculpt architecture</span>
+graph &lt;&lt; NeuronBlock(<span class="tk-n">784</span>, <span class="tk-n">512</span>, act=<span class="tk-s">"mish"</span>, norm=<span class="tk-s">"rms"</span>)
+graph &lt;&lt; AttentionHead(dim=<span class="tk-n">512</span>, heads=<span class="tk-n">8</span>, dropout=<span class="tk-n">0.1</span>)
+graph &lt;&lt; NeuronBlock(<span class="tk-n">512</span>, <span class="tk-n">10</span>, act=<span class="tk-s">"softmax"</span>)
+
+<span class="tk-c"># Compile and inspect</span>
+graph.compile(); graph.visualize()`;
+
+        const playCodeText = `<span class="tk-k">import</span> neuroverse <span class="tk-k">as</span> nv
+
+<span class="tk-c"># Initialize playground</span>
+play = nv.Playground(
+    device=<span class="tk-s">"cuda"</span>,
+    precision=<span class="tk-s">"bfloat16"</span>
+)
+
+<span class="tk-c"># Forward pass</span>
+play.add_input(dim=<span class="tk-n">784</span>)
+play.add_hidden(<span class="tk-n">256</span>, act=<span class="tk-s">"mish"</span>)
+play.add_output(<span class="tk-n">10</span>, act=<span class="tk-s">"softmax"</span>)
+
+<span class="tk-c"># Run inference</span>
+output = play.predict(sample)`;
+
+        function typeWriter(element, html, speed = 10) {
+            element.innerHTML = '';
+            const tokens = html.split(/(<[^>]+>)/g).filter(Boolean);
+            let current = '';
+
+            function next() {
+                if (tokens.length) {
+                    current += tokens.shift();
+                    element.innerHTML = current + '<span style="display:inline-block;width:8px;height:13px;background:#ff4d00;margin-left:2px;animation:blink 1s infinite;"></span>';
+                    setTimeout(next, speed + Math.random() * 10);
+                } else {
+                    element.innerHTML = html + '<span style="display:inline-block;width:8px;height:13px;background:#ff4d00;margin-left:2px;animation:blink 1s infinite;"></span>';
+                }
+            }
+            next();
+        }
+
+        const codeObs = new IntersectionObserver((entries) => {
+            entries.forEach(e => {
+                if (e.isIntersecting) {
+                    if (e.target.id === 'typewriter-code') typeWriter(e.target, codeText, 8);
+                    if (e.target.id === 'playground-code') typeWriter(e.target, playCodeText, 12);
+                    codeObs.unobserve(e.target);
+                }
+            });
+        }, {threshold: 0.2});
+
+        const t1 = document.getElementById('typewriter-code');
+        const t2 = document.getElementById('playground-code');
+        if (t1) codeObs.observe(t1);
+        if (t2) codeObs.observe(t2);
+
+        // ============================================================
+        // CHARTS
+        // ============================================================
+        Chart.defaults.color = '#3a3a3a';
+        Chart.defaults.borderColor = 'rgba(255,255,255,0.03)';
+        Chart.defaults.font.family = 'Inter';
+
+        const lossChart = new Chart(document.getElementById('lossChart'), {
+            type: 'line',
+            data: { labels: [], datasets: [
+                { label: 'Train', data: [], borderColor: '#f0eee9', backgroundColor: 'rgba(240,238,233,0.03)', borderWidth: 1.5, tension: 0.4, fill: true, pointRadius: 0, pointHoverRadius: 3 },
+                { label: 'Val', data: [], borderColor: '#ff4d00', backgroundColor: 'rgba(255,77,0,0.03)', borderWidth: 1.5, tension: 0.4, fill: true, pointRadius: 0, pointHoverRadius: 3 }
+            ]},
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false, 
+                interaction: { intersect: false, mode: 'index' }, 
+                plugins: { legend: { display: false }, tooltip: { backgroundColor: '#141414', titleColor: '#f0eee9', bodyColor: '#8a8884', borderColor: '#2a2a2a', borderWidth: 1, padding: 10, titleFont: {size: 11}, bodyFont: {size: 10} } }, 
+                scales: { x: { display: false }, y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.02)' }, ticks: { font: { size: 10 } } } } 
+            }
+        });
+
+        const accChart = new Chart(document.getElementById('accChart'), {
+            type: 'line',
+            data: { labels: [], datasets: [
+                { label: 'Train', data: [], borderColor: '#f0eee9', backgroundColor: 'rgba(240,238,233,0.03)', borderWidth: 1.5, tension: 0.4, fill: true, pointRadius: 0, pointHoverRadius: 3 },
+                { label: 'Val', data: [], borderColor: '#ff4d00', backgroundColor: 'rgba(255,77,0,0.03)', borderWidth: 1.5, tension: 0.4, fill: true, pointRadius: 0, pointHoverRadius: 3 }
+            ]},
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false, 
+                interaction: { intersect: false, mode: 'index' }, 
+                plugins: { legend: { display: false }, tooltip: { backgroundColor: '#141414', titleColor: '#f0eee9', bodyColor: '#8a8884', borderColor: '#2a2a2a', borderWidth: 1, padding: 10, titleFont: {size: 11}, bodyFont: {size: 10} } }, 
+                scales: { x: { display: false }, y: { beginAtZero: true, max: 100, grid: { color: 'rgba(255,255,255,0.02)' }, ticks: { font: { size: 10 }, callback: v => v+'%' } } } 
+            }
+        });
+
+        // ============================================================
+        // TRAINING SIMULATION
+        // ============================================================
+        let trainInt = null, epoch = 0, bestAcc = 0, startTime = null, running = false;
+        const maxEpoch = 100;
+
+        function fmtTime(s) {
+            const m = Math.floor(s/60), sec = s%60;
+            return `${m.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')}`;
+        }
+
+        function step() {
+            epoch++;
+            const p = epoch / maxEpoch;
+            const loss = 2.5 * Math.exp(-p * 3.5) + 0.08 + Math.random() * 0.04;
+            const vLoss = loss + 0.12 + Math.random() * 0.08;
+            const acc = Math.min(99.5, 52 + 46 * (1 - Math.exp(-p * 4)) + Math.random() * 1.5);
+            const vAcc = acc - 1.5 - Math.random() * 2;
+            bestAcc = Math.max(bestAcc, vAcc);
+
+            document.getElementById('m-epoch').textContent = `${epoch}/${maxEpoch}`;
+            document.getElementById('m-epoch-bar').style.width = `${p * 100}%`;
+            document.getElementById('m-acc').textContent = `${bestAcc.toFixed(2)}%`;
+            document.getElementById('m-loss').textContent = loss.toFixed(3);
+            if (startTime) document.getElementById('m-time').textContent = fmtTime(Math.floor((Date.now() - startTime) / 1000));
+
+            const maxPoints = isMobile ? 30 : 50;
+            if (lossChart.data.labels.length > maxPoints) {
+                lossChart.data.labels.shift();
+                lossChart.data.datasets.forEach(d => d.data.shift());
+                accChart.data.labels.shift();
+                accChart.data.datasets.forEach(d => d.data.shift());
+            }
+            lossChart.data.labels.push(epoch);
+            lossChart.data.datasets[0].data.push(loss);
+            lossChart.data.datasets[1].data.push(vLoss);
+            accChart.data.labels.push(epoch);
+            accChart.data.datasets[0].data.push(acc);
+            accChart.data.datasets[1].data.push(vAcc);
+            lossChart.update('none'); accChart.update('none');
+
+            if (epoch >= maxEpoch) stop();
+        }
+
+        function start() {
+            if (running) return;
+            running = true; epoch = 0; bestAcc = 0; startTime = Date.now();
+            lossChart.data.labels = []; lossChart.data.datasets.forEach(d => d.data = []);
+            accChart.data.labels = []; accChart.data.datasets.forEach(d => d.data = []);
+            const dot = document.getElementById('status-dot');
+            dot.style.background = '#ff4d00';
+            dot.style.boxShadow = '0 0 8px #ff4d00';
+            document.getElementById('status-text').textContent = 'TRAINING';
+            document.getElementById('status-text').style.color = '#ff4d00';
+            document.getElementById('train-btn').textContent = 'PAUSE';
+            trainInt = setInterval(step, isMobile ? 220 : 180);
+        }
+
+        function stop() {
+            running = false; clearInterval(trainInt);
+            const dot = document.getElementById('status-dot');
+            dot.style.background = '#8a8884';
+            dot.style.boxShadow = 'none';
+            document.getElementById('status-text').textContent = 'IDLE';
+            document.getElementById('status-text').style.color = '#8a8884';
+            document.getElementById('train-btn').textContent = 'START TRAINING';
+        }
+
+        document.getElementById('train-btn').addEventListener('click', () => running ? stop() : start());
+
+        // ============================================================
+        // PLAYGROUND FORWARD PASS
+        // ============================================================
+        const pCanvas = document.getElementById('playground-canvas');
+        const pCtx = pCanvas.getContext('2d');
+        const pOverlay = document.getElementById('viz-overlay');
+        let pAnim = null;
+
+        function resizeP() {
+            const r = pCanvas.parentElement.getBoundingClientRect();
+            const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+            pCanvas.width = r.width * dpr;
+            pCanvas.height = r.height * dpr;
+            pCanvas.style.width = r.width + 'px';
+            pCanvas.style.height = r.height + 'px';
+            pCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+
+        const ro = new ResizeObserver(entries => {
+            for (let entry of entries) resizeP();
+        });
+        ro.observe(pCanvas.parentElement);
+        resizeP();
+
+        function drawPlayground() {
+            const w = pCanvas.width / (window.devicePixelRatio || 1);
+            const h = pCanvas.height / (window.devicePixelRatio || 1);
+            const layers = isMobile ? [4, 6, 6, 5, 3] : [5, 8, 8, 6, 4];
+            const spacing = w / (layers.length + 1);
+            let time = 0;
+            const packets = [];
+
+            for (let l = 0; l < layers.length - 1; l++) {
+                for (let i = 0; i < (isMobile ? 2 : 3); i++) {
+                    packets.push({
+                        layer: l,
+                        from: Math.floor(Math.random() * layers[l]),
+                        to: Math.floor(Math.random() * layers[l+1]),
+                        progress: -Math.random() * 0.5,
+                        speed: 0.015 + Math.random() * 0.01,
+                        color: l < 2 ? '#ff4d00' : '#f0eee9'
+                    });
+                }
             }
 
-            drawConnection(svg, neuron1, neuron2, weight) {
-                const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-                line.setAttribute('x1', neuron1.x);
-                line.setAttribute('y1', neuron1.y);
-                line.setAttribute('x2', neuron2.x);
-                line.setAttribute('y2', neuron2.y);
-                line.setAttribute('stroke', weight > 0 ? '#00ff00' : '#ff0000');
-                line.setAttribute('stroke-width', Math.abs(weight) * 2);
-                line.setAttribute('opacity', '0.5');
-                line.classList.add('neuron-connection');
-                svg.appendChild(line);
-            }
+            let pFrame = 0;
+            function loop() {
+                pCtx.clearRect(0, 0, w, h);
+                time += 0.016;
+                pFrame++;
 
-            updateNetwork() {
-                this.epoch++;
-                document.getElementById('epoch-counter').textContent = `${this.epoch}/${this.maxEpochs}`;
-                
-                const accuracy = 50 + Math.random() * (this.epoch / this.maxEpochs) * 50;
-                this.bestAccuracy = Math.max(this.bestAccuracy, accuracy);
-                document.getElementById('best-accuracy').textContent = `${this.bestAccuracy.toFixed(2)}%`;
-                
-                const timeElapsed = Date.now() - this.startTime;
-                const timeRemaining = Math.floor((timeElapsed / this.epoch) * (this.maxEpochs - this.epoch));
-                const timeRemainingStr = new Date(timeRemaining).toISOString().substr(11, 8);
-                document.getElementById('time-remaining').textContent = timeRemainingStr;
+                const positions = layers.map((c, li) => {
+                    const x = spacing * (li + 1);
+                    const yStart = h / 2 - (c - 1) * (isMobile ? 18 : 22);
+                    return Array.from({length: c}, (_, ni) => ({x, y: yStart + ni * (isMobile ? 36 : 44)}));
+                });
 
-                this.updateCharts();
-            }
-
-            updateCharts() {
-                const lossValue = Math.exp(-this.epoch / 20) + Math.random() * 0.1;
-                const valLossValue = lossValue + Math.random() * 0.2;
-                const accuracyValue = 100 * (1 - lossValue);
-                const valAccuracyValue = 100 * (1 - valLossValue);
-
-                if (lossChart.data.labels.length > 50) {
-                    lossChart.data.labels.shift();
-                    lossChart.data.datasets.forEach(dataset => dataset.data.shift());
-                    accuracyChart.data.labels.shift();
-                    accuracyChart.data.datasets.forEach(dataset => dataset.data.shift());
+                pCtx.strokeStyle = 'rgba(42,42,42,0.4)'; 
+                pCtx.lineWidth = 1;
+                for (let l = 0; l < layers.length - 1; l++) {
+                    for (let i = 0; i < layers[l]; i++) {
+                        for (let j = 0; j < layers[l+1]; j++) {
+                            pCtx.beginPath();
+                            pCtx.moveTo(positions[l][i].x, positions[l][i].y);
+                            pCtx.lineTo(positions[l+1][j].x, positions[l+1][j].y);
+                            pCtx.stroke();
+                        }
+                    }
                 }
 
-                lossChart.data.labels.push(this.epoch);
-                lossChart.data.datasets[0].data.push(lossValue);
-                lossChart.data.datasets[1].data.push(valLossValue);
-                
-                accuracyChart.data.labels.push(this.epoch);
-                accuracyChart.data.datasets[0].data.push(accuracyValue);
-                accuracyChart.data.datasets[1].data.push(valAccuracyValue);
+                positions.forEach((layer, li) => {
+                    layer.forEach((p, ni) => {
+                        const pulse = Math.sin(time * 2 + li * 0.5 + ni) * 0.3 + 0.7;
+                        const baseColor = li === 0 ? '#ff4d00' : li === layers.length - 1 ? '#f0eee9' : '#3a3a3a';
 
-                lossChart.update();
-                accuracyChart.update();
+                        pCtx.beginPath();
+                        pCtx.arc(p.x, p.y, (isMobile ? 10 : 12) * pulse, 0, Math.PI * 2);
+                        pCtx.fillStyle = `rgba(${li===0?'255,77,0':li===layers.length-1?'240,238,233':'58,58,58'},${0.15 * pulse})`;
+                        pCtx.fill();
+
+                        pCtx.beginPath();
+                        pCtx.arc(p.x, p.y, isMobile ? 5 : 6, 0, Math.PI * 2);
+                        pCtx.fillStyle = baseColor;
+                        pCtx.fill();
+                    });
+                });
+
+                packets.forEach(pkt => {
+                    pkt.progress += pkt.speed;
+                    if (pkt.progress > 1) {
+                        pkt.progress = 0;
+                        pkt.from = Math.floor(Math.random() * layers[pkt.layer]);
+                        pkt.to = Math.floor(Math.random() * layers[pkt.layer + 1]);
+                    }
+                    if (pkt.progress < 0) return;
+
+                    const a = positions[pkt.layer][pkt.from];
+                    const b = positions[pkt.layer + 1][pkt.to];
+                    if (!a || !b) return;
+                    const x = a.x + (b.x - a.x) * pkt.progress;
+                    const y = a.y + (b.y - a.y) * pkt.progress;
+
+                    if (!isMobile || pFrame % 2 === 0) {
+                        pCtx.beginPath();
+                        pCtx.arc(x, y, 6, 0, Math.PI * 2);
+                        const grad = pCtx.createRadialGradient(x, y, 0, x, y, 6);
+                        grad.addColorStop(0, pkt.color === '#ff4d00' ? 'rgba(255,77,0,0.4)' : 'rgba(240,238,233,0.3)');
+                        grad.addColorStop(1, 'rgba(255,77,0,0)');
+                        pCtx.fillStyle = grad;
+                        pCtx.fill();
+                    }
+
+                    pCtx.beginPath();
+                    pCtx.arc(x, y, 3, 0, Math.PI * 2);
+                    pCtx.fillStyle = pkt.color;
+                    pCtx.fill();
+                });
+
+                pAnim = requestAnimationFrame(loop);
             }
+            loop();
         }
 
-        // Initialize network and start simulation
-        const network = new NeuralNetwork();
-        setInterval(() => network.updateNetwork(), 1000);
+        document.getElementById('run-btn').addEventListener('click', () => {
+            pOverlay.classList.add('hidden');
+            if (pAnim) cancelAnimationFrame(pAnim);
+            drawPlayground();
+            document.getElementById('p-conf').textContent = '94.2%';
+            document.getElementById('p-pred').textContent = '7';
+            document.getElementById('p-lat').textContent = '12ms';
+        });
 
-        
+        document.getElementById('reset-btn').addEventListener('click', () => {
+            if (pAnim) cancelAnimationFrame(pAnim);
+            pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
+            pOverlay.classList.remove('hidden');
+            document.getElementById('p-conf').textContent = '--';
+            document.getElementById('p-pred').textContent = '--';
+            document.getElementById('p-lat').textContent = '--';
+        });
 
-        // Typing effect for hero subtitle
-        const heroSubtitle = document.getElementById('hero-subtitle');
-        const text = heroSubtitle.textContent;
-        heroSubtitle.textContent = '';
-        let i = 0;
-
-        function typeWriter() {
-            if (i < text.length) {
-                heroSubtitle.textContent += text.charAt(i);
-                i++;
-                setTimeout(typeWriter, 50);
+        // Touch swipe to close mobile menu
+        let touchStartX = 0;
+        document.addEventListener('touchstart', e => {
+            touchStartX = e.touches[0].clientX;
+        }, {passive:true});
+        document.addEventListener('touchend', e => {
+            const diff = touchStartX - e.changedTouches[0].clientX;
+            if (diff > 60 && mobileNav.classList.contains('open')) {
+                menuBtn.classList.remove('active');
+                mobileNav.classList.remove('open');
+                document.body.style.overflow = '';
             }
-        }
+        }, {passive:true});
 
-        typeWriter();
-
-        // Mobile optimization
-        function handleResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-
-        window.addEventListener('resize', handleResize);
+    })();
     </script>
 </body>
 </html>
